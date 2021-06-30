@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Publications on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/publication/</link>
+    <description>Recent content in Publications on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 02 Apr 2021 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/publication/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>E(n) Equivariant Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/en_equivariant_flows/</link>
+      <pubDate>Fri, 02 Apr 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/en_equivariant_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Argmax Flows and Multinomial Diffusion: Learning Categorical Distributions</title>
+      <link>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</link>
+      <pubDate>Tue, 02 Feb 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>E(n) Equivariant Graph Neural Networks</title>
+      <link>https://ehoogeboom.github.io/publication/egnn/</link>
+      <pubDate>Tue, 02 Feb 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/egnn/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Self Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/self_normalizing_flows/</link>
+      <pubDate>Fri, 01 Jan 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/self_normalizing_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Variational Determinant Estimation with Spherical Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/var_det_estimation/</link>
+      <pubDate>Fri, 01 Jan 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/var_det_estimation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>The Convolution Exponential and Generalized Sylvester Flows</title>
+      <link>https://ehoogeboom.github.io/publication/conv_exp/</link>
+      <pubDate>Wed, 02 Dec 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/conv_exp/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>SurVAE Flows: Surjections to Bridge the Gap between VAEs and Flows</title>
+      <link>https://ehoogeboom.github.io/publication/survae_flows/</link>
+      <pubDate>Tue, 01 Dec 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/survae_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Learning Discrete Distributions by Dequantization</title>
+      <link>https://ehoogeboom.github.io/publication/dequantization/</link>
+      <pubDate>Sat, 01 Feb 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/dequantization/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Predictive Sampling with Forecasting Autoregressive Models</title>
+      <link>https://ehoogeboom.github.io/publication/predictive_sampling/</link>
+      <pubDate>Sat, 01 Feb 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/predictive_sampling/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Learning Likelihoods with Conditional Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/conditional_flows/</link>
+      <pubDate>Wed, 01 Jan 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/conditional_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Integer Discrete Flows and Lossless Compression</title>
+      <link>https://ehoogeboom.github.io/publication/integer_flows/</link>
+      <pubDate>Sun, 01 Dec 2019 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/integer_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Emerging Convolutions for Generative Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/emerging_convs/</link>
+      <pubDate>Mon, 28 Jan 2019 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/emerging_convs/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>HexaConv</title>
+      <link>https://ehoogeboom.github.io/publication/hexaconv/</link>
+      <pubDate>Tue, 06 Mar 2018 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/hexaconv/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

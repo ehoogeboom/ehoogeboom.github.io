@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Ole Winther on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/authors/ole-winther/</link>
+    <description>Recent content in Ole Winther on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 01 Dec 2020 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/authors/ole-winther/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>SurVAE Flows: Surjections to Bridge the Gap between VAEs and Flows</title>
+      <link>https://ehoogeboom.github.io/publication/survae_flows/</link>
+      <pubDate>Tue, 01 Dec 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/survae_flows/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

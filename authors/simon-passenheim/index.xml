@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Simon Passenheim on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/authors/simon-passenheim/</link>
+    <description>Recent content in Simon Passenheim on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 01 Jan 2021 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/authors/simon-passenheim/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Variational Determinant Estimation with Spherical Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/var_det_estimation/</link>
+      <pubDate>Fri, 01 Jan 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/var_det_estimation/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

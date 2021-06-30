@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>3 on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/publication_types/3/</link>
+    <description>Recent content in 3 on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 02 Apr 2021 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/publication_types/3/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>E(n) Equivariant Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/en_equivariant_flows/</link>
+      <pubDate>Fri, 02 Apr 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/en_equivariant_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Argmax Flows and Multinomial Diffusion: Learning Categorical Distributions</title>
+      <link>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</link>
+      <pubDate>Tue, 02 Feb 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Learning Discrete Distributions by Dequantization</title>
+      <link>https://ehoogeboom.github.io/publication/dequantization/</link>
+      <pubDate>Sat, 01 Feb 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/dequantization/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Learning Likelihoods with Conditional Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/conditional_flows/</link>
+      <pubDate>Wed, 01 Jan 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/conditional_flows/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

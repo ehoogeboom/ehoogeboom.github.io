@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Jakub M. Tomczak on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/authors/jakub-m.-tomczak/</link>
+    <description>Recent content in Jakub M. Tomczak on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 02 Dec 2020 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/authors/jakub-m.-tomczak/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>The Convolution Exponential and Generalized Sylvester Flows</title>
+      <link>https://ehoogeboom.github.io/publication/conv_exp/</link>
+      <pubDate>Wed, 02 Dec 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/conv_exp/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

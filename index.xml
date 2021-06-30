@@ -1,0 +1,743 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/</link>
+    <description>Recent content on Emiel Hoogeboom</description>
+    <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 20 May 2021 11:14:00 +0200</lastBuildDate>
+    
+	    <atom:link href="https://ehoogeboom.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>How to build E(n) Equivariant Normalizing Flows, for points with features?</title>
+      <link>https://ehoogeboom.github.io/post/en_flows/</link>
+      <pubDate>Thu, 20 May 2021 11:14:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/post/en_flows/</guid>
+      <description>
+
+&lt;p&gt;&lt;em&gt;A quick motivation.&lt;/em&gt; A nice application of our E(n) Normalizing Flow (E-NF) is the simultaneous generation of molecule features and 3D positions. However the method also aimed to be general-purpose and can be used for other data as well. You can think about point-cloud data, or even better point-cloud data with some features on the point (like a temperature). E-NFs can learn a &lt;em&gt;distribution&lt;/em&gt; over data like that. After learning such a distribution, we can sample new points that resemble the data, if successful ;).&lt;/p&gt;
+
+&lt;p&gt;The aim of this blog post is to guide you through some of the techniques we used to make E(n) Equivariant Flows (&lt;a href=&#34;https://arxiv.org/abs/2105.09016&#34; target=&#34;_blank&#34;&gt;paper&lt;/a&gt;). I really liked working on this project because it nicely brought together several topics in literature. For some of these, there are related previous projects that I was a part of. To give an overview, this blog is on:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Normalizing Flows&lt;/li&gt;
+&lt;li&gt;Continuous Time Normalizing Flows&lt;/li&gt;
+&lt;li&gt;E(n) Equivariant GNNs&lt;/li&gt;
+&lt;li&gt;Argmax Flows&lt;/li&gt;
+&lt;li&gt;And then finally tying everything together for E(n) Normalizing Flows.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;These sections are aimed to be as much stand-alone as possible, although they are of course connected. Also, this write-up is intended to be an intro, and is should not be seen as comprehensive or complete. For more details and a more thorough exposition, please see the paper. I hope you will enjoy it :)&lt;/p&gt;
+
+&lt;h3 id=&#34;1-normalizing-flows-and-the-change-of-variables-formula&#34;&gt;1. Normalizing Flows and the change of variables formula&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Main takeaway&lt;/strong&gt; &lt;em&gt;Normalizing flows are invertible functions. We generally name the flow $f$ and its inverse $g = f^{-1}$, which you can also name &amp;ldquo;flow&amp;rdquo;. The flow contains neural networks and can be learned from data. Flows allow exact likelihood computation via the change of variables formula. The difficult part is often finding a nice (learnable) function that is invertible. After training, flows can be used to generate data. Confession: To this date I am still unsure why they are called &amp;ldquo;normalizing&amp;rdquo;. Some people say because they map to a normal distribution, others say because they re-normalize the distribution after the map.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;A Generative Model&lt;/strong&gt;. A generative model is often defined using a simple distribution $p_Z$ and a learnable function $g: \mathbf{z} \mapsto \mathbf{x}$. For the simple distribution we desire something that we can sample from, and we call this the &lt;em&gt;base distribution&lt;/em&gt;. This distribution lives in some other space than the data itself, called the &lt;em&gt;latent space&lt;/em&gt;. We will name a variable of this space $\mathbf{z}$ and without much imagination we will pick the base distribution over $\mathbf{z}$ to be Gaussian, so $p_Z(\mathbf{z}) = \mathcal{N}(\mathbf{z} | 0, 1)$.&lt;/p&gt;
+
+&lt;p&gt;Next we want to initialize some neural network to model $g: \mathbf{z} \mapsto \mathbf{x}$. However, without any constraints on $g$, in practice we can only sample from this model. Sampling works like this: First sample $\mathbf{z} \sim p_Z$ (using torch.randn() for instance) and then compute $\mathbf{x} = g(\mathbf{z})$. This procedure implies a distribution $p_X(\mathbf{x})$. Okay so sampling is easy. The difficulty is &lt;em&gt;optimizing&lt;/em&gt; such a model. Given a new datapoint $\mathbf{x}$ it is &lt;em&gt;extremely difficult&lt;/em&gt; to compute the likelihood $p_X(\mathbf{x})$.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;rsquo;s see an example in 1D:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/1d_gen_func.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;A simple distribution $p_Z$ is fed through a function $\mathbf{x} = g(\mathbf{z})$ to give $p_X$&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;&lt;/p&gt;
+
+&lt;p&gt;Magic! By composing a simple distribution with a somewhat complicated function $g$, we have created a distribution with two peaks from a unimodal Gaussian. To build some intuition, think about the following: If the derivative of $g$ is high, will the resulting density in $p_X$ at that point become lower or higher? To reiterate the point of the previous paragraph: it is generally difficult to compute $p_X$. Huh? But how did we do it in this example then? Secretly, the example has been handcrafted so that $g$ is invertible. It turns out, $g$ is already a flow&amp;hellip;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Normalizing Flows&lt;/strong&gt;.
+To compute $p_X(\mathbf{x})$, Normalizing Flows (Rezende &amp;amp; Mohamed 2015, Dinh et al. 2016) come to the rescue, they restrict $g$ to be &lt;em&gt;invertible&lt;/em&gt;. As a result we can utilize the change of variables formula. In 1 dimension it reads:
+$$p_X(\mathbf{x}) = p_Z(g^{-1}(\mathbf{x})) \left| g&amp;rsquo;(g^{-1}(\mathbf{x})) \right|^{-1}.$$
+with $g&amp;rsquo;$ as derivative. In more dimensions the formula is:
+$$p_X(\mathbf{x}) = p_Z(g^{-1}(\mathbf{x})) \left | \det J_g(g^{-1}(\mathbf{x})) \right|^{-1}.$$
+That is interesting, we find the likelihood of a point $\mathbf{x}$ by inverting $g$ and going back to the corresponding latent point $\mathbf{z}$. Also we are using the Jacobian determinant of the function at some point. Funny is that there is a lot of inverses $g^{-1}$ in the formula. It turns out we need the inverse more than $g$ itself! For that reason we often learn the inverse directly and call this $f = g^{-1}$. This is possible because if $f$ is invertible, then $g$ is too. It&amp;rsquo;s only changing the perspective a little. After writing everything in terms of $f$ the change-of-variables formula looks like this:&lt;br /&gt;
+$$p_X(\mathbf{x}) = p_Z(\mathbf{z}) \left | \det J_f(\mathbf{x}) \right|, \quad \mathbf{z} = f(\mathbf{x}).$$&lt;/p&gt;
+
+&lt;p&gt;Okay, what does this formula mean? First of all it&amp;rsquo;s good to recall that we are interested in learning a complex model distribution, something that can capture all the intricate dependencies of our data. We call this model distribution $p_X$. Ideally, we want a sample $\mathbf{x} \sim p_X$ to look like a sample from the data, after we&amp;rsquo;ve trained our model. So this formula tells us that given a datapoint $\mathbf{x}$, we should transform it using $\mathbf{z} = f(\mathbf{x})$ and compute two things: $p_Z(\mathbf{z})$ and the Jacobian determinant $\det J_f(\mathbf{x})$. Multiply these things and we get the likelihood $p_X(\mathbf{x})$.&lt;/p&gt;
+
+&lt;p&gt;Going back to the example, we can look at $f$, which is the inverse of $g$:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/f_and_g.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;The inverse of $g$&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;&lt;/p&gt;
+
+&lt;p&gt;Using this function $f$ and given a data distribution, we can now do some &lt;em&gt;inference&lt;/em&gt;, that is we can compute the likelihood of datapoints under our model, and observe how it compares to the true data distribution:&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/1d_inference.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Data and model distribution. $f$ tries to shape data into a Gaussian.&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;Awesome! We now have a method to learn a model distribution $p_X$ that fits to samples from some dataset. In practice training looks like this: We get a datapoint $\mathbf{x}$. We compute the corresponding latent point $\mathbf{z} = f(\mathbf{x})$ and then compute $p_Z(\mathbf{z})$ and $|\det J_f(\mathbf{x})|$. We then multiply these together to get the &lt;em&gt;model&lt;/em&gt; likelihood of the datapoint $\mathbf{x}$. The function $f$ is optimized to maximize $p_X(\mathbf{x})$. Sampling goes like this: Sample $\mathbf{z} \sim p_Z$ (using torch.randn()) and then compute $\mathbf{x} = g(\mathbf{z}) = f^{-1}(\mathbf{z})$. A small detail: In higher dimension log-space generally works a lot better for optimization and in that case the change-of-variable looks like:
+$$\log p_X(x) = \log p_Z(z) + \log \left | \det J_f(x) \right|, \quad z = f(x).$$&lt;/p&gt;
+
+&lt;p&gt;This is the intro to normalizing flows. There is already a much better blogpost written by Jakub &lt;a href=&#34;https://jmtomczak.github.io/blog/3/3_flows.html&#34; target=&#34;_blank&#34;&gt;here&lt;/a&gt;, but I made you read through my version first :). Be sure to check it out for more details!&lt;/p&gt;
+
+&lt;h3 id=&#34;2-continuous-time-normalizing-flows&#34;&gt;2. Continuous-time Normalizing Flows&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Main takeaway&lt;/strong&gt; &lt;em&gt;Continuous-time Normalizing Flows come from a beautiful insight: solutions to ordinary differential equations (ODEs) are almost always invertible (under some very mild constraints). This is awesome, the reason: ODEs are a very easy way to build a flow, which we call continuous-time flows. And we only need to put mild constraints on the neural network $\phi$ inside the ODE, mainly some differentiability. For an illustration of a 1 dimensional continuous-time flow see below:&lt;/em&gt;&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/1d_ode_density.png&#34; width=&#34;50%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;A continuous-time flow generates a more complicated 1D distribution from a Gaussian. This visualization was inspired by the figure from Grathwohl et al. (2018)&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;The Transformation&lt;/strong&gt;
+An ODE can be formulated like this:
+$$\mathbf{z} = \mathbf{x} + \int_0^1 \phi(\mathbf{x}(t)) dt$$
+where $\phi$ models the first order derivative with respect to time. Only time is not really time, it&amp;rsquo;s more a conceptual thing to think about the ODE. We will not go into detail into how to solve such a thing, but rest assured that there is a beautiful python package written by Chen et al. (2018) to do so called torchdiffeq. In code solving the above really amounts to calling &lt;code&gt;z = odeint(self.phi, x, [0, 1])&lt;/code&gt;. To me, this simplicity is magical. To connect this to the previous section, we say that $f$ gives the solution to the ODE, so that $\mathbf{z} = f(\mathbf{x})$.&lt;/p&gt;
+
+&lt;p&gt;As claimed before, the inverse to this equation exists. It is:
+$$\mathbf{x} = \mathbf{z} + \int_1^0 \phi(\mathbf{x}(t)) dt$$
+and is solved by calling &lt;code&gt;x = odeint(self.phi, z, [1, 0])&lt;/code&gt;. Again, we take this entire transform and call it $g= f^{-1}$ from the previous section. Since it&amp;rsquo;s invertible, we can use it as a flow: a continuous-time normalizing flow (Chen et al 2017, Chen et al. 2018)&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Continuous-time change-of-variables&lt;/strong&gt;.
+Just having an invertible function is not enough. We also need to find $J_f(\mathbf{x})$ to compute the log-likelihood of a datapoint $\mathbf{x}$. We can find that the &lt;em&gt;continuous time&lt;/em&gt; change-of-variables is written as:&lt;/p&gt;
+
+&lt;p&gt;$$\log p_X(\mathbf{x}) = \log p_Z(\mathbf{z}) + \int_0^1 \mathrm{Tr }\, J _{\phi}(\mathbf{x}(t)) dt$$&lt;/p&gt;
+
+&lt;p&gt;It turns out that $\log \det J_f = \int_0^1 \mathrm{Tr }\, J _{\phi}(\mathbf{x}(t)) dt$. So the change of variables formula is written as &lt;em&gt;another&lt;/em&gt; ODE. By the way, this can also be solved using &lt;code&gt;odeint&lt;/code&gt;.  Without giving a formal proof, there is a nice identity via the matrix logarithm that you can use to see the connection between log determinant and the trace. The identity is: $\log \det J = \mathrm{Tr }\, \log J$. Observe that this second $\log$ is the &lt;em&gt;matrix logarithm&lt;/em&gt;. Imagine taking a small step (like in Euler&amp;rsquo;s method) for small $\varepsilon$ as stepsize: $\mathbf{x}&amp;rsquo; = \mathbf{x} + \varepsilon \cdot \phi(\mathbf{x})$. Then the log Jacobian determinant of that tiny step can be written as:&lt;/p&gt;
+
+&lt;p&gt;$$\log \det (I + \varepsilon J_ \phi) = \mathrm{Tr }\, \log (I + \varepsilon J_ \phi) = \mathrm{Tr }\, \sum_{i=1}^\infty (-1)^{i+1} \frac{(\varepsilon {J_\phi})^i}{i} =\mathrm{Tr }\, (\varepsilon {J_\phi}) + O(\varepsilon^2)$$&lt;/p&gt;
+
+&lt;p&gt;So in summary $\log \det (I + \varepsilon J_ \phi) = \varepsilon \mathrm{Tr }\, ({J_\phi})$ as $\varepsilon \to 0$. Speaking informally, adding up all these small $\varepsilon$ terms and taking the limit when $\varepsilon \to 0$ then gives $\int_0^1 \mathrm{Tr }\, J _{\phi}(\mathbf{x}(t)) dt$.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Visualization of the dynamics &amp;amp; generation&lt;/strong&gt;
+Let&amp;rsquo;s look at a 2D Dataset: the eight Gaussians. From now on we&amp;rsquo;ll be looking at actual (data) points instead of density curves as in the 1D examples before. First let&amp;rsquo;s examine the data, here are some samples from the dataset called 8 Gaussians:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/continuousflow/data_8gauss.png&#34; width=&#34;40%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;A 1000 datapoints from the 8 Gaussians dataset.&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;&lt;/p&gt;
+
+&lt;p&gt;Now we already trained a neural network $\phi$ to do well on this task. You can see in the below image how it transforms the datapoints into the Gaussian base distribution over time:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/continuousflow/inference_8gauss.png&#34; width=&#34;100%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Given data $\mathbf{x}$ transform to $\mathbf{z} = \mathbf{x} + \int_0^1 \phi(\mathbf{x}(t)) dt$. The arrows show the output of $\phi$&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;&lt;/p&gt;
+
+&lt;p&gt;The arrow directions in the plots really show the output of $\phi$ at those points. $\phi$ is literally describing how to points should move through the space. Interestingly, for generation we go in the opposite direction, so $-\phi$.  To generate points, first we sample Gaussian noise in $\mathbf{z} \sim \mathcal{N}(0, 1)$ and then compute the reverse of the flow:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/continuousflow/gen_8gauss.png&#34; width=&#34;100%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Given noise $\mathbf{z}$ generate $\mathbf{x} = \mathbf{z} + \int_1^0 \phi(\mathbf{x}(t)) dt$. The arrows show the output of $-\phi$&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;&lt;/p&gt;
+
+&lt;p&gt;That&amp;rsquo;s it for continuous-time flows. They are ODEs and have their own &lt;em&gt;continuous time&lt;/em&gt; change-of-variables formula that itself is also an ODE.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Some remarks&lt;/strong&gt; Several details have not been explained. How to compute the gradient efficiently? (Adjoint method). How to compute the trace efficiently? (Hutchinson&amp;rsquo;s trace estimator). For these details please see the paper by Chen et al. (2018) and Grathwohl et al. (2018). Also $\phi$ may depend on time, but in both notation and visualization it was easier to ignore this.&lt;/p&gt;
+
+&lt;h3 id=&#34;3-e-n-equivariant-gnns&#34;&gt;3. E(n) Equivariant GNNs&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Main takeaway&lt;/strong&gt; &lt;em&gt;Equivariance is about the very intuitive concept of symmetry: If my input rotates, my output needs to rotate similarly. In our work, we are interested in rotations, reflections and translations, which is linked to the Euclidean Group E(n). Therefore, we want a network $\phi$ that is E(n) equivariant. For this we use EGNNs, which are computationally cheap and expressive.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Then the flow $f$ constructed from $\phi$ is also equivariant. And then with this equivariant flow $f$ an invariant distribution $p_X$ can be constructed. This distribution has the desirably property that no matter how you rotate your input, it will give the same likelihood.&lt;/em&gt;&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/egnn.png&#34; width=&#34;100%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;E-GNNs, the network $\phi$ is equivariant to rotations and translations.&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;Equivariance Background&lt;/strong&gt;
+Group Equivariant Networks (Cohen &amp;amp; Welling 2016, Dieleman et al. 2016) hard-code symmetries in their transformations. Taking rotations with a matrix $\mathbf{Q}$ as an example: Rotating the input should also rotate the output of a function. Or concisely, $\phi$ is rotation equivariant if:
+$$\phi(\mathbf{Q}\mathbf{x}) = \mathbf{Q}\phi(\mathbf{x}) \quad \text{ for all rotation matrices } \quad \mathbf{Q}$$&lt;/p&gt;
+
+&lt;p&gt;Although the statement might seem technical at first, it&amp;rsquo;s conveying a very natural constraint that we can all relate to: for some structures it does not matter whether you rotate them or not. And the predictions should be the same, or rotate accordingly.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;The Euclidean Group E(n), and how does it act?&lt;/strong&gt;
+The group of translations, rotations and reflections is called the Euclidean group, and is referred to as $E(n)$ for short. An element of this group can be described by an $n \times n$ orthogonal matrix $\mathbf{Q}$ and translation vector $\mathbf{t} \in \mathbb{R}^n$. The group is not the full story though, one has to decide how the group &lt;em&gt;acts&lt;/em&gt; on the data. Here you want to make choices that fit nature, and although it seems technical it is something that everybody intuitively already understands. Imagine a graph with points that have coordinates $\mathbf{x}$ and a temperature $\mathbf{h}$. Then a rotation and translation &lt;em&gt;act&lt;/em&gt; on $\mathbf{x}$ by rotating and translating it, but the same act on the temperature $\mathbf{h}$ will not change it. For this reason we sometimes refer to features $\mathbf{h}$ as invariant. There is a third type of data: velocities $\mathbf{v}$. Although these will rotate like positions, they will not translate. To extend our equivariant notation from earlier, we say $\phi$ is E(n) equivariant if:&lt;/p&gt;
+
+&lt;p&gt;$$\phi(\mathbf{Q}\mathbf{x}, \mathbf{h}) = \mathbf{Q}\mathbf{z}_x, \mathbf{z}_h \quad \text{where} \quad \mathbf{z}_x, \mathbf{z}_h = \phi(\mathbf{x}, \mathbf{h})$$&lt;/p&gt;
+
+&lt;p&gt;There is a large body of work dedicated to finding expressive networks equivariant to Euclidean symmetries, for example Tensor Field Networks (Thomas et al. 2018).&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;E-GNNs&lt;/strong&gt;
+In E-GNNs (Satorras et al. 2021) we aim to simplify E(n) Equivariant transformations as much as possible, while retaining or improving the performance. The main take-away is the following: Most of the complexity of the transformation is learned via the edge function $\phi_e$ the position function $\phi_x$ and $\phi_h$. Because all these functions operate on an invariant representation, they can be any arbitrary function. To see the invariance: Just imagine rotating the $\mathbf{x}$&amp;rsquo;s, these functions will &lt;em&gt;not&lt;/em&gt; change, because distances $|\mathbf{x}_{i}^{l}-\mathbf{x}_{j}^{l}|^{2}$ do not change under rotations.
+$$\mathbf{m}_{ij} =\phi_{e}\left(\mathbf{h}_{i}^{l}, \mathbf{h}_{j}^{l},\left|\mathbf{x}_{i}^{l}-\mathbf{x}_{j}^{l}\right|^{2}\right) \quad \text{ and }\quad \mathbf{m}_{i} = \sum_{j \not= i} e_{ij}\mathbf{m}_{ij}, $$&lt;/p&gt;
+
+&lt;p&gt;for the messages. The positions and invariant features are updated using:&lt;/p&gt;
+
+&lt;p&gt;$$\mathbf{x}_{i}^{l+1} =\mathbf{x}_{i}^{l}+\sum_{j \neq i} \frac{(\mathbf{x}_{i}^{l}-\mathbf{x}_{j}^{l})}{|\mathbf{x}_{i}^{l}-\mathbf{x}_{j}^{l}| + 1} \phi_{x}\left(\mathbf{m}_{ij}\right) \quad \text{ and }\quad
+\mathbf{h}_{i}^{l+1} =\phi_{h}\left(\mathbf{h}_{i}^l, \mathbf{m}_{i} \right)$$&lt;/p&gt;
+
+&lt;p&gt;Together these layers define a single layer. We can just stack them to get a deeper E-GNN. Note that in the update equation for $\mathbf{x}$ we show the more stable version which we introduced in E(n) Flows, which was important to improve the stability of the ODE.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Invariant Distributions with Equivariant Flows&lt;/strong&gt;
+In the end we want the likelihood of a point cloud to remain the same under rotations. So we desire:
+$$p_X(\mathbf{x}) = p_X(\mathbf{Q}\mathbf{x}) \quad \text{ for all orthogonal matrices } \quad \mathbf{Q}$$&lt;/p&gt;
+
+&lt;p&gt;Köhler et al. (2019) showed a really cool result: Take an equivariant flow $f$ with an invariant base distribution $p_Z$ with $p_Z(\mathbf{z}) = p_Z(\mathbf{Qz})$. Then together they give a complicated but invariant likelihood $p_X$. In an equation this can be seen from:&lt;/p&gt;
+
+&lt;p&gt;$$p_X(\mathbf{Q}\mathbf{x}) = p_Z(f(\mathbf{Q}\mathbf{x})) |\det J_f(\mathbf{Q}\mathbf{x}))| = p_Z(\mathbf{Q}f(\mathbf{x})) |\det \mathbf{Q} J_f(\mathbf{x}))| = p_Z(f(\mathbf{x})) |\det J_f(\mathbf{x}))|  $$&lt;/p&gt;
+
+&lt;p&gt;You might ask why not take an invariant flow? So something with $f(\mathbf{Qx}) = f(\mathbf{x})$? Then you would also have an invariant distribution $p_X$. Good thinking! However, it turns out that in that case the transformations that you can learn are very limited, and as a result you cannot really model complicated invariant distributions with $p_X$. A final remark: In this section we only talked about rotations, for translations the story is slightly different and for details please see the paper.&lt;/p&gt;
+
+&lt;h3 id=&#34;4-argmax-flows&#34;&gt;4. Argmax Flows&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Main takeaway&lt;/strong&gt; &lt;em&gt;We have a problem, we have a continuous-time flow, which models continuous distributions. However, some features are discrete, like for instance an atom type (Carbon, Hydrogen, Oxygen, &amp;hellip;). To lift these discrete values, we use Argmax Flows. Argmax Flows give a way to transition between the categorical and continuous. To discretize we can simply take the argmax: $\mathbf{h} = \mathrm{argmax}\,\,\boldsymbol{\tilde{h}}$. To lift to the continuous, we sample $\boldsymbol{\tilde{h}} \sim q(\cdot | \mathbf{h})$. To optimize, we only need to subtract $\log q(\boldsymbol{\tilde{h}} | \mathbf{h})$ from the objective, and then we are guaranteed to learn a lowerbound on our discrete log-likelihood.&lt;/em&gt;&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/overview_argmax.png&#34; width=&#34;80%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Argmax Flows&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;First of all, in case of ordinal data (integers like a temperature), Variational Dequantization by by Ho et al. (2019) is exactly what you want. In this section we will focus on &lt;em&gt;categorical data&lt;/em&gt;. In the case, we can use Argmax Flows (Hoogeboom et al. 2021). These work as follows: Assume a continuously distributed variable $p(\boldsymbol{\tilde{h}})$ and let $\mathbf{h} = \mathrm{argmax}\,\,\boldsymbol{\tilde{h}}$. For $K$ classes we have $\boldsymbol{\tilde{h}} \in \mathbb{R}^K$ and $\mathbf{h} \in \{0, 1, \ldots, K\}$. This construction gives us a generative model that outputs classes in $\{0, 1, \ldots, K\}$&lt;/p&gt;
+
+&lt;p&gt;Now observe the following: we can see the deterministic argmax as a discrete distribution with 100% of the mass on that output. So we say $P(\mathbf{h} | \boldsymbol{\tilde{h}}) = 1\,$  if  $\,\mathbf{h} = \mathrm{argmax} \,\,\boldsymbol{\tilde{h}}\,$ and $\,P(\mathbf{h} | \boldsymbol{\tilde{h}}) = 0$ otherwise. This is cool, because sampling from this distribution is &lt;em&gt;exactly the same&lt;/em&gt; as taking the argmax.&lt;/p&gt;
+
+&lt;p&gt;We can now write the entire thing as a latent variable model and derive for a discrete distribution we define: $p(\mathbf{h}) = \int P(\mathbf{h} | \boldsymbol{\tilde{h}}) p(\boldsymbol{\tilde{h}}) \mathrm{d}\boldsymbol{\tilde{h}}$. Although this integral may seem complicated, it&amp;rsquo;s just counting for a class $\mathbf{h}$ how much probability mass is in the corresponding continuous region. We then derive in log-space using variational inference:
+$$ \log p(\mathbf{h}) = \log \int P(\mathbf{h} | \boldsymbol{\tilde{h}}) p(\boldsymbol{\tilde{h}}) \mathrm{d}\boldsymbol{\tilde{h}} \quad \text{from definition}$$&lt;/p&gt;
+
+&lt;p&gt;$$ =\log \int \frac{q(\boldsymbol{\tilde{h}} | \mathbf{h})}{q(\boldsymbol{\tilde{h}} | \mathbf{h})} P(\mathbf{h} | \boldsymbol{\tilde{h}}) p(\boldsymbol{\tilde{h}}) \mathrm{d}\boldsymbol{\tilde{h}}  \quad \text{multiply by 1}$$&lt;/p&gt;
+
+&lt;p&gt;$$ =\log \mathbb{E}_{\boldsymbol{\tilde{h}} \sim q(\cdot | \mathbf{h})} \frac{P(\mathbf{h} | \boldsymbol{\tilde{h}}) p(\boldsymbol{\tilde{h}})}{q(\boldsymbol{\tilde{h}} | \mathbf{h})}  \quad \text{integral to expectation}$$&lt;/p&gt;
+
+&lt;p&gt;$$ \geq \mathbb{E}_{\boldsymbol{\tilde{h}} \sim q(\cdot | \mathbf{h})} \log \frac{P(\mathbf{h} | \boldsymbol{\tilde{h}}) p(\boldsymbol{\tilde{h}})}{q(\boldsymbol{\tilde{h}} | \mathbf{h})}  \quad \text{Jensen&amp;rsquo;s inequality}$$&lt;/p&gt;
+
+&lt;p&gt;For this last step, restrict $q(\boldsymbol{\tilde{h}} | \mathbf{h})$ to only have support over the relevant region: the region where $P(\mathbf{h} | \boldsymbol{\tilde{h}}) = 1$. Then we get&lt;/p&gt;
+
+&lt;p&gt;$$ \log p(\mathbf{h}) \geq \mathbb{E}_{\boldsymbol{\tilde{h}} \sim q(\cdot | \mathbf{h})} [\log p(\boldsymbol{\tilde{h}}) - \log q(\boldsymbol{\tilde{h}} | \mathbf{h})]  \quad \text{restrict $q$, expand log}$$
+And this is exactly the objective that we optimize. What&amp;rsquo;s cool is that this gives us a very nice method to transition between the categorical space $\mathbf{h}$ and the continuous space $\boldsymbol{\tilde{h}}$ using an argmax function in one direction, and sampling from $q$ in the other direction. The only thing we have to take into account is the additional term $- \log q(\boldsymbol{\tilde{h}})$. Now we are completely free to train any continuous distribution (such as a continuous-time flow) for $p(\boldsymbol{\tilde{h}})$. This is great because $\mathbf{x}$ was already continuous, so to optimize a flow on both positions and features $(\mathbf{x}, \mathbf{h})$ jointly we needed to lift the features $\mathbf{h}$ to the continuous $\boldsymbol{\tilde{h}}$. We then train on $(\mathbf{x}, \boldsymbol{\tilde{h}})$.&lt;/p&gt;
+
+&lt;p&gt;Because we can now transition between discrete and continuous so easily, in remaining sections we may not properly distinguish between $\mathbf{h}$ and $\boldsymbol{\tilde{h}}$ anymore. Also sometimes we drop the tilde as in the paper so $\boldsymbol{\tilde{h}} = \boldsymbol{h}$.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;How to construct q?&lt;/strong&gt;
+This section is not super important, but just for the interested reader. We will give the simplest method we came up with. Recall that we need to sample values $\boldsymbol{\tilde{h}}$ but only in the region where $\mathbf{h} = \mathrm{argmax} \,\,\boldsymbol{\tilde{h}}$, where $\mathbf{h}$ is given as a datapoint. First construct a distribution with free noise $\boldsymbol{u}$, in our case we&amp;rsquo;ll use a Gaussian $\boldsymbol{u} \sim \mathcal{N}(\mu(\mathbf{h}),
+\sigma(\mathbf{h}))$, where $\mu, \sigma$ are functions modelled by a (shared) EGNN. Then call $i = \mathbf{h}$ to clarify that it&amp;rsquo;s an index. We leave the $i$&amp;lsquo;th index the same so that $\boldsymbol{\tilde{h}}_i = \boldsymbol{u}_i$. Call this value $T = \boldsymbol{\tilde{h}}_i$. Then all the other indices are thresholded using $\boldsymbol{\tilde{h}}_{-i} = T - \mathrm{softplus}(T - \boldsymbol{u}_{-i}))$, which ensures they are smaller than $T$. So this is exactly the desired argmax constraint. Since the function is bijective, we can use the change-of-variables formula again to find:&lt;/p&gt;
+
+&lt;p&gt;$$\log q(\boldsymbol{\tilde{h}} | \mathbf{h}) = \log \mathcal{N}(\boldsymbol{u} | \mu(\mathbf{h}),
+\sigma(\mathbf{h})) - \log |\det \mathrm{d}\boldsymbol{\tilde{h}}/\mathrm{d}\boldsymbol{u}|,$$&lt;/p&gt;
+
+&lt;p&gt;using the derivatives of the softplus. And this is exactly the additional term $\log q(\boldsymbol{\tilde{h}} | \mathbf{h})$ that we need in the objective so we are done :).&lt;/p&gt;
+
+&lt;h3 id=&#34;5-e-n-equivariant-flows&#34;&gt;5. E(n) Equivariant Flows&lt;/h3&gt;
+
+&lt;p&gt;Wow, you made it. And there is good news: we&amp;rsquo;ve been setting up all the relevant parts above so that it fits perfectly for E(n) Equivariant Flows. So most of the hard work is done. First as a reward, let&amp;rsquo;s look at the generation of a molecule using the E-NF:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/optimized_animation.gif&#34; width=&#34;95%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Animation of E(n) Flows.&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;&lt;/p&gt;
+
+&lt;p&gt;The animation is showcasing two properties of our model. 1) The flow is invertible. This is shown via the generate and inference animations. 2) The flow is equivariant. If not, after rotating we wouldn&amp;rsquo;t necessarily arrive at the same molecule (but rotated). Only because the model is both &lt;em&gt;invertible&lt;/em&gt; and &lt;em&gt;equivariant&lt;/em&gt;, we are able to loop this gif.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;The Normalizing Flow&lt;/strong&gt;
+So what do we need? A description for the positions of the nodes: $\mathbf{x} \in \mathbb{R}^{M \times n}$. So there $M$ nodes in a $n$-dimensional space. Also we need something for features &lt;em&gt;on&lt;/em&gt; the nodes, like an atom type, which we call $\mathbf{h} \in \mathbb{R}^{M \times \mathrm{nf}}$, which can contain $\mathrm{nf}$ features. We know now that if $\mathbf{h}$ is categorical, then we can lift them to a continuous version using Argmax Flows. Here $f$ maps $\mathbf{x}, \mathbf{h} \mapsto \mathbf{z}_{x}, \mathbf{z}_{h}$. Then, we join everything together into a change of variables formula:&lt;/p&gt;
+
+&lt;p&gt;$$p(\mathbf{x}, \mathbf{h}) = p_Z(\mathbf{z}_{x}, \mathbf{z}_{h}) | \det J_f |,$$&lt;/p&gt;
+
+&lt;p&gt;where $J_f = \frac{\mathrm{d}(\mathbf{x}, \mathbf{h})}{\mathrm{d}(\mathbf{z}_{x}, \mathbf{z}_{h})}$ is the Jacobian, where all tensors are vectorized for the Jacobian computation. To build $f$, we utilize an ODE with an E-GNN $\phi$ that is the actual learnable part of our model:&lt;/p&gt;
+
+&lt;p&gt;$$\mathbf{z}_x, \mathbf{z}_h = f(\mathbf{x}, \mathbf{h}) = [\mathbf{x}, \mathbf{h}] + \int_{0}^{1} \phi(\mathbf{x}(t), \mathbf{h}(t))\mathrm{d}t.$$&lt;/p&gt;
+
+&lt;p&gt;As mentioned before, the solution to this integral is simply solved by calling &lt;code&gt;z = odeint(self.phi, x, [0, 1])&lt;/code&gt;. In the next section we can describe the dynamics $\phi$.&lt;/p&gt;
+
+&lt;p&gt;Imagine how cool these dynamics are by the way: Previously in the 2D example $\phi$ was only predicting the velocity for 2D points independently. Now it&amp;rsquo;s way cooler: It&amp;rsquo;s predicting for a collection of points (for instance a molecule with atoms) how each atom should move depending on all the others. If you look at the visualization, $\phi$ is really deciding how each atom travels through the space.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;The Dynamics&lt;/strong&gt;
+Using the construction of the EGNN layer in the previous section, we can just stack them to get an EGNN. In the experiments we used 6 layers, so $L=6$. The invariant output $\mathbf{h}^L$ can be used immediately, we denote this $\mathbf{h}^L(t)$ with $(t)$ just because the input depends on a specific time $t \in [0, 1]$. A problem would arise if you used $\mathbf{x}^L(t)$ immediately: the ODE would not be equivariant anymore. Instead, we need the dynamics for $\mathbf{x}$ to behave like a velocity vector: It should rotate, but not translate under the group actions. The reason for this is that $\mathbf{x}$ itself already translates under group actions, so just adding the output $\mathbf{x}^L(t)$ would double that action, essentially translating the output twice. This is easily alleviated by using the residual $\mathbf{x}^L(t) - \mathbf{x}(t)$, which does behave as a velocity. We can then write the dynamics of our model, the main learnable component as follows:&lt;/p&gt;
+
+&lt;p&gt;$$\phi(\mathbf{x}(t), \mathbf{h}(t)) = \mathbf{x}^L(t) - \mathbf{x}(t), \mathbf{h}^L(t) \quad \text{ where } \quad  \mathbf{x}^L(t), \mathbf{h}^L(t) =\text{EGNN}[\mathbf{x}(t), \mathbf{h}(t)].$$&lt;/p&gt;
+
+&lt;p&gt;And that&amp;rsquo;s it. We now have a model that can be trained on molecule-like data.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Samples&lt;/strong&gt;
+Training takes about a week or two. Continuous-time normalizing flows are just really expensive, requiring hundreds of evaluations to solve the ODE. Nevertheless, the results are really awesome. We show our method far outperforms existing normalizing flow methods on several datasets. Among these is qm9 which contains molecules, and from that model we can show these samples we generated:&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/molecule_samples.png&#34; width=&#34;95%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Samples from the E(n) Flow trained on qm9.&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;An overview&lt;/strong&gt;
+And then the overview of what we actually do during training. The flowchart below shows the steps:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/training_procedure_enflows.png&#34; width=&#34;95%&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Training E(n) Equivariant Flows&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+These can be summarized as: 1) Get some datapoint $\mathbf{x}, \mathbf{h}$. 2) Lift the discrete features from $\mathbf{h}$ to the continuous $\boldsymbol{h}$. 3) Run &lt;code&gt;odeint&lt;/code&gt; using the dynamics $\phi$ modelled by an EGNN. 3) Collect all the terms for the likelihood among which is the base distribution on the output: $\log p_Z(\mathbf{z}_x, \mathbf{z}_h)$. To deal with different molecule sizes, an addition 1D categorical distribution $p(M)$ (think of a histogram) models the molecule size. At last, we can show the objective in its entirety, which brings everything together in a single line:
+$$\log p(\mathbf{x}, \mathbf{h}) \! \geq \! \mathbb{E}_{\boldsymbol{\tilde{h}} \sim q(\cdot | \mathbf{x}, \mathbf{h})} [\underbrace{\log p_Z(\mathbf{z}_x, \mathbf{z}_h)}_{\text{base likelihood}} + \underbrace{\int_0^1 \mathrm{Tr }\, J_{\phi}(\mathbf{x}(t), \boldsymbol{\tilde{h}}(t))dt}_{\text{ODE volume change}} \, \underbrace{-\log q(\boldsymbol{\tilde{h}} | \mathbf{x}, \mathbf{h})}_{\text{lifting term}} + \underbrace{\log p(M)}_{\text{size likelihood}}],$$
+where $\mathbf{z}_x, \mathbf{z}_h = [\mathbf{x}, \mathbf{h}] + \int_{0}^{1} \phi(\mathbf{x}(t), \mathbf{h}(t))\mathrm{d}t$.&lt;/p&gt;
+
+&lt;h1 id=&#34;conclusions&#34;&gt;Conclusions&lt;/h1&gt;
+
+&lt;p&gt;And that&amp;rsquo;s it. In spite of the good results there are some limitations: 1) Continuous-time flows are computationally expensive. 2) The combination of the ODE with the original EGNN is sometimes unstable. After our modification, we still noticed some rare peaks in the loss of the QM9 experiment that can diverge. (Of course when the model is saved you can simply restart from right before that point in training). 3) The model in its current form does not model distributions over edges between nodes. 4) Our likelihood estimation is invariant to reflections, but some structures (like molecules) may be chiral: their mirror image does not interact in the same way as the original. Also, if you are specifically interested in molecule generation also have a look at the work by Gebauer et al. (2019). And that&amp;rsquo;s it, thank you for reading :).&lt;/p&gt;
+
+&lt;h1 id=&#34;references-in-order-of-appearance&#34;&gt;References (in order of appearance)&lt;/h1&gt;
+
+&lt;p&gt;Victor Garcia Satorras, Emiel Hoogeboom, Fabian B. Fuchs, Ingmar Posner, Max Welling. E(n) Equivariant Normalizing Flows. (2021)&lt;/p&gt;
+
+&lt;p&gt;Danilo Jimenez Rezende, Shakir Mohamed. Variational Inference with Normalizing Flows. (2015).&lt;/p&gt;
+
+&lt;p&gt;Laurent Dinh, Jascha Sohl-Dickstein, Samy Bengio. Density estimation using Real NVP. (2016)&lt;/p&gt;
+
+&lt;p&gt;Changyou Chen, Chunyuan Li, Liqun Chen, Wenlin Wang, Yunchen Pu, Lawrence Carin. Continuous-Time Flows for Efficient Inference and Density Estimation (2017)&lt;/p&gt;
+
+&lt;p&gt;Ricky T. Q. Chen, Yulia Rubanova, Jesse Bettencourt, David Duvenaud. Neural Ordinary Differential Equations. (2018)&lt;/p&gt;
+
+&lt;p&gt;Will Grathwohl, Ricky T. Q. Chen, Jesse Bettencourt, Ilya Sutskever, David Duvenaud. FFJORD: Free-form Continuous Dynamics for Scalable Reversible Generative Models (2018)&lt;/p&gt;
+
+&lt;p&gt;Taco Cohen, Max Welling. Group Equivariant Convolutional Networks. (2016)&lt;/p&gt;
+
+&lt;p&gt;Sander Dieleman, Jeffrey De Fauw, Koray Kavukcuoglu. Exploiting Cyclic Symmetry in Convolutional Neural Networks. (2016)&lt;/p&gt;
+
+&lt;p&gt;Nathaniel Thomas, Tess Smidt, Steven Kearnes, Lusann Yang, Li Li, Kai Kohlhoff, Patrick Riley. Tensor field networks: Rotation- and translation-equivariant neural networks for 3D point clouds. (2018)&lt;/p&gt;
+
+&lt;p&gt;Victor Garcia Satorras, Emiel Hoogeboom, Max Welling. E(n) Equivariant Graph Neural Networks. (2021)&lt;/p&gt;
+
+&lt;p&gt;Jonas Köhler, Leon Klein, Frank Noé. Equivariant flows: sampling configurations for multi-body systems with symmetric energies. (2019)&lt;/p&gt;
+
+&lt;p&gt;Jonathan Ho, Xi Chen, Aravind Srinivas, Yan Duan, Pieter Abbeel. Flow++: Improving Flow-Based Generative Models with Variational Dequantization and Architecture Design. (2019)&lt;/p&gt;
+
+&lt;p&gt;Emiel Hoogeboom, Didrik Nielsen, Priyank Jaini, Patrick Forré, Max Welling. Argmax Flows and Multinomial Diffusion: Learning Categorical Distributions. (2021)&lt;/p&gt;
+
+&lt;p&gt;Niklas W. A. Gebauer, Michael Gastegger, Kristof T. Schütt. Symmetry-adapted generation of 3d point sets for the targeted discovery of molecules. (2019)&lt;/p&gt;
+
+&lt;p&gt;This list is by no means comprehensive, check out the paper for more details.&lt;/p&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>E(n) Equivariant Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/en_equivariant_flows/</link>
+      <pubDate>Fri, 02 Apr 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/en_equivariant_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Argmax Flows and Multinomial Diffusion: Learning Categorical Distributions</title>
+      <link>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</link>
+      <pubDate>Tue, 02 Feb 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>E(n) Equivariant Graph Neural Networks</title>
+      <link>https://ehoogeboom.github.io/publication/egnn/</link>
+      <pubDate>Tue, 02 Feb 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/egnn/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Self Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/self_normalizing_flows/</link>
+      <pubDate>Fri, 01 Jan 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/self_normalizing_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Variational Determinant Estimation with Spherical Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/var_det_estimation/</link>
+      <pubDate>Fri, 01 Jan 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/var_det_estimation/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>The Convolution Exponential and Generalized Sylvester Flows</title>
+      <link>https://ehoogeboom.github.io/publication/conv_exp/</link>
+      <pubDate>Wed, 02 Dec 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/conv_exp/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>SurVAE Flows: Surjections to Bridge the Gap between VAEs and Flows</title>
+      <link>https://ehoogeboom.github.io/publication/survae_flows/</link>
+      <pubDate>Tue, 01 Dec 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/survae_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Learning Discrete Distributions by Dequantization</title>
+      <link>https://ehoogeboom.github.io/publication/dequantization/</link>
+      <pubDate>Sat, 01 Feb 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/dequantization/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Predictive Sampling with Forecasting Autoregressive Models</title>
+      <link>https://ehoogeboom.github.io/publication/predictive_sampling/</link>
+      <pubDate>Sat, 01 Feb 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/predictive_sampling/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Learning Likelihoods with Conditional Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/conditional_flows/</link>
+      <pubDate>Wed, 01 Jan 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/conditional_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Integer Discrete Flows and Lossless Compression</title>
+      <link>https://ehoogeboom.github.io/publication/integer_flows/</link>
+      <pubDate>Sun, 01 Dec 2019 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/integer_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Invertible Convolutions</title>
+      <link>https://ehoogeboom.github.io/post/invertible_convs/</link>
+      <pubDate>Wed, 29 May 2019 11:14:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/post/invertible_convs/</guid>
+      <description>
+
+&lt;p&gt;Recently, the Machine Learning community has become more focused on finding invertible transformations. One of the benefits of invertible transformations is that the change of variable formula holds:&lt;/p&gt;
+
+&lt;p&gt;$$p_X(x) = p_Z(z) \left | \frac{dz}{dx} \right|, \quad z = f(x),$$&lt;/p&gt;
+
+&lt;p&gt;which admits the optimization of a complicated likelihood $p_X(\cdot)$ via a simple, tractable one: $p_Z(\cdot)$. Glow introduced invertible $1 \times 1$ convolutions and i-ResNet introduced invertible residual connections.&lt;/p&gt;
+
+&lt;p&gt;Our work aims to invert the &lt;em&gt;convolution operation&lt;sup class=&#34;footnote-ref&#34; id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/em&gt; itself. In other words, we want to be able to find the inverse convolution, sometimes referred to as a deconvolution. We introduce three methods: &lt;em&gt;i)&lt;/em&gt; emerging convolutions for invertible zero-padded convolutions, &lt;em&gt;ii)&lt;/em&gt; invertible periodic convolutions, and &lt;em&gt;iii)&lt;/em&gt; stable and flexible $1 \times 1$ convolutions. For details, check out &lt;a href=&#34;https://arxiv.org/abs/1901.11137&#34; target=&#34;_blank&#34;&gt;paper&lt;/a&gt; or &lt;a href=&#34;https://github.com/ehoogeboom/emerging&#34; target=&#34;_blank&#34;&gt;code&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&#34;standard-convolutions&#34;&gt;Standard convolutions&lt;/h3&gt;
+
+&lt;p&gt;To understand how, let&amp;rsquo;s first study a deep learning convolution. We will assume our kernel $\mathbf{w}$ and input $\mathbf{x}$ are both single channel with height 3 and width 3 pixels. Also, we will assume 1 pixel wide zero padding. It turns out, this convolution (depicted left), can be expressed as a matrix multiplication (right):&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/equivalent_mm_1channel.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;A 1-channel convolution as matrix multiplication&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;Going further, we can even visualize a multi-channel convolution. For clarity, we omit the value descriptions inside the filter. Let&amp;rsquo;s visualize a 2-channel convolution:&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/equivalent_mm_2channel.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;A 2-channel convolution as matrix multiplication&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;In this figure, the kernel and equivalent matrix are shown without the input. Implicitly, a vector ordering on the input $x$ was chosen to visualize this matrix. It is not very important what this ordering is, as it only determines the &lt;em&gt;order&lt;/em&gt; in which the parameter values appear in the matrix.&lt;/p&gt;
+
+&lt;p&gt;Now that we have expressed everything as linear algebra, it seems we have solved the problem and we can find the inverse. However, for images of larger size, this matrix would grow quite quickly: It has dimensions $h w c \times h w c$, where $h$ is height, $w$ is width, and $c$ is number of channels. Therefore, even though inverting this matrix directly is &lt;em&gt;technically&lt;/em&gt; possible, the growth of the matrix makes this practically infeasible.&lt;/p&gt;
+
+&lt;h4 id=&#34;autoregressive-convolutions&#34;&gt;Autoregressive Convolutions&lt;/h4&gt;
+
+&lt;p&gt;Convolution kernels can be masked in a very particular way, such that the equivalent matrix is &lt;em&gt;triangular&lt;/em&gt;. As a consequence, it is straightforward to compute the Jacobian determinant and the inverse for this operation. In essence, we have traded complexity for a convolution that is easy to invert:&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/ar_equivalent_mm_2channel.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;A 2-channel &lt;em&gt;autoregressive&lt;/em&gt; convolution as matrix multiplication&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;p&gt;Even though the autoregressive convolution is easily inverted, it suffers from limited flexibility: in this case, it is blind to pixels below.&lt;/p&gt;
+
+&lt;h3 id=&#34;emerging-convolutions&#34;&gt;Emerging Convolutions&lt;/h3&gt;
+
+&lt;p&gt;Now we are all set to create an invertible convolution. The main idea is to combine multiple autoregressive convolutions, with specifically designed masks. As a result, the emerging receptive field is identical to that of a standard convolution:
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/emerging_conv.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Applying two autoregressive convolutions (left) results in a convolution with a receptive field identical to standard convolutions (right)&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;&lt;/p&gt;
+
+&lt;p&gt;This allows one to learn an invertible convolution from a factorization of two masked convolutions. Mathematically, this can be viewed as applying a convolution with filter $k_1$ and then with $k_2$, or as a single convolution&lt;sup class=&#34;footnote-ref&#34; id=&#34;fnref:2&#34;&gt;&lt;a href=&#34;#fn:2&#34;&gt;2&lt;/a&gt;&lt;/sup&gt; with filter $k = k_2 * {k_1}$:&lt;/p&gt;
+
+&lt;p&gt;$$k_2 \star (k_1 \star f) = (k_2 * {k_1}) \star f.$$&lt;/p&gt;
+
+&lt;h3 id=&#34;invertible-periodic-convolutions&#34;&gt;Invertible Periodic Convolutions&lt;/h3&gt;
+
+&lt;p&gt;Alternative to using factored convolutions, we may also leverage the convolution theorem, which is connected with the Fourier transform. As a consequence, our convolutions will be circular. This can be useful when data is periodic around edges, or if the pixels contain roughly the same values. For the exact details please refer to the paper. In short: the feature maps and kernels are transformed to the frequency domain using the Fourier transform. In the frequency domain, the equivalent matrix of the convolution is a block matrix, and the convolution can be computed as:&lt;/p&gt;
+
+&lt;p&gt;$$\hat{\mathbf{z}}_{:,uv} = \hat{\mathbf{W}}_{uv} \, \hat{\mathbf{x}}_{:,uv},$$
+where the notation $\hat{\,}$ denotes a tensor is in the frequency domain, by applying the fourier transform. The inverse is obtained by simply inverting $\hat{\mathbf{W}}_{uv}$.
+$$\hat{\mathbf{z}}_{:,uv} = \hat{\mathbf{W}}_{uv}^{-1} \, \hat{\mathbf{x}}_{:,uv},$$&lt;/p&gt;
+
+&lt;p&gt;Although it may seem like we have not gained anything, the matrices $\hat{\mathbf{W}}_{uv}$ are actually independent and small. Instead of a naïve inverse, which would have cost $\mathcal{O}(h^3 w^3 c^3)$, inverting this method has computational cost of $\mathcal{O}(hw c^3)$, which can even be parallelized across the dimensions $w$ and $h$.&lt;/p&gt;
+
+&lt;h3 id=&#34;stable-1-times-1-qr-convolutions&#34;&gt;Stable 1 $\times$ 1 QR convolutions&lt;/h3&gt;
+
+&lt;p&gt;In addition to the invertible $d \times d$ convolutions, we also introduce a stable &lt;em&gt;and&lt;/em&gt; flexible parametrization of the 1 $\times$ 1 convolution, that uses the QR decomposition. Although any square matrix has a PLU parametrization (as proposed in Glow), it is difficult to train the permutation matrix P using gradient descent. Instead, we introduce a QR parametrization, that can be trained straightforwardly. The inverse is then simply obtained by applying a 1 $\times$ 1 convolution using the kernel $R^{-1} Q^\text{T}$.&lt;/p&gt;
+
+&lt;h1 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h1&gt;
+
+&lt;p&gt;In summary, we have introduced three generative flows: &lt;em&gt;i)&lt;/em&gt; $d \times d$ emerging convolutions as invertible standard zero-padded convolutions, &lt;em&gt;ii)&lt;/em&gt; $d \times d$ periodic convolutions for periodic data or data with minimal boundary variation, and &lt;em&gt;iii)&lt;/em&gt; stable and flexible $1 \times 1$ convolutions using a QR parametrization. If you want to know more, check out &lt;a href=&#34;https://arxiv.org/abs/1901.11137&#34; target=&#34;_blank&#34;&gt;paper&lt;/a&gt; or &lt;a href=&#34;https://github.com/ehoogeboom/emerging&#34; target=&#34;_blank&#34;&gt;code&lt;/a&gt;.&lt;/p&gt;
+
+
+
+
+  
+
+&lt;figure&gt;
+
+&lt;img src=&#34;https://ehoogeboom.github.io/img/emerging_results.png&#34; /&gt;
+
+
+
+&lt;figcaption data-pre=&#34;Figure &#34; data-post=&#34;:&#34; class=&#34;numbered&#34;&gt;
+  &lt;h4&gt;Left: samples from a flow using periodic convolutions trained on galaxy images. Right: samples from a flow using emerging convolutions trained on CIFAR10. Bottom: Performance in bits per dimension, i.e. negative log$_2$-likelihood (lower is better)&lt;/h4&gt;
+  
+&lt;/figcaption&gt;
+
+&lt;/figure&gt;
+
+&lt;h1 id=&#34;references&#34;&gt;References&lt;/h1&gt;
+
+&lt;p&gt;Hoogeboom, E., Van Den Berg, R. &amp;amp; Welling, M.. (2019). Emerging Convolutions for Generative Normalizing Flows. Proceedings of the 36th International Conference on Machine Learning, in PMLR 97:2771-2780&lt;/p&gt;
+
+&lt;p&gt;Kingma, D. P., Dhariwal, P.. Glow: Generative Flow with Invertible 1x1 Convolutions. Advances in Neural Information Processing Systems 31.&lt;/p&gt;
+
+&lt;p&gt;Behrmann, J., Grathwohl, W., Chen, R.T.Q., Duvenaud, D. &amp;amp; Jacobsen, J.. (2019). Invertible Residual Networks. Proceedings of the 36th International Conference on Machine Learning, in PMLR 97:573-582&lt;/p&gt;
+&lt;div class=&#34;footnotes&#34;&gt;
+
+&lt;hr /&gt;
+
+&lt;ol&gt;
+&lt;li id=&#34;fn:1&#34;&gt;In practice, deep learning convolutions are generally a summation of cross-correlations. In text this detail is omitted and everything is referred to as a convolution.
+ &lt;a class=&#34;footnote-return&#34; href=&#34;#fnref:1&#34;&gt;&lt;sup&gt;^&lt;/sup&gt;&lt;/a&gt;&lt;/li&gt;
+&lt;li id=&#34;fn:2&#34;&gt;Equation holds when signals are real and discrete.
+ &lt;a class=&#34;footnote-return&#34; href=&#34;#fnref:2&#34;&gt;&lt;sup&gt;^&lt;/sup&gt;&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/div&gt;
+</description>
+    </item>
+    
+    <item>
+      <title>Emerging Convolutions for Generative Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/emerging_convs/</link>
+      <pubDate>Mon, 28 Jan 2019 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/emerging_convs/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>HexaConv</title>
+      <link>https://ehoogeboom.github.io/publication/hexaconv/</link>
+      <pubDate>Tue, 06 Mar 2018 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/hexaconv/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

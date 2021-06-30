@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Rianne van den Berg on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/authors/rianne-van-den-berg/</link>
+    <description>Recent content in Rianne van den Berg on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 01 Dec 2019 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/authors/rianne-van-den-berg/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Integer Discrete Flows and Lossless Compression</title>
+      <link>https://ehoogeboom.github.io/publication/integer_flows/</link>
+      <pubDate>Sun, 01 Dec 2019 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/integer_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Emerging Convolutions for Generative Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/emerging_convs/</link>
+      <pubDate>Mon, 28 Jan 2019 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/emerging_convs/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

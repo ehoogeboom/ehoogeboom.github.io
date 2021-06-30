@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Priyank Jaini on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/authors/priyank-jaini/</link>
+    <description>Recent content in Priyank Jaini on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 02 Feb 2021 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/authors/priyank-jaini/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Argmax Flows and Multinomial Diffusion: Learning Categorical Distributions</title>
+      <link>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</link>
+      <pubDate>Tue, 02 Feb 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/argmax_flows_mult_diffusion/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Self Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/self_normalizing_flows/</link>
+      <pubDate>Fri, 01 Jan 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/self_normalizing_flows/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>SurVAE Flows: Surjections to Bridge the Gap between VAEs and Flows</title>
+      <link>https://ehoogeboom.github.io/publication/survae_flows/</link>
+      <pubDate>Tue, 01 Dec 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/survae_flows/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

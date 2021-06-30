@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Fabian B. Fuchs on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/authors/fabian-b.-fuchs/</link>
+    <description>Recent content in Fabian B. Fuchs on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 02 Apr 2021 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/authors/fabian-b.-fuchs/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>E(n) Equivariant Normalizing Flows</title>
+      <link>https://ehoogeboom.github.io/publication/en_equivariant_flows/</link>
+      <pubDate>Fri, 02 Apr 2021 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/en_equivariant_flows/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>

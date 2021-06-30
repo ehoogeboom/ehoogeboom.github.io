@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Taco S. Cohen on Emiel Hoogeboom</title>
+    <link>https://ehoogeboom.github.io/authors/taco-s.-cohen/</link>
+    <description>Recent content in Taco S. Cohen on Emiel Hoogeboom</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 Feb 2020 00:00:00 +0200</lastBuildDate>
+    
+	<atom:link href="https://ehoogeboom.github.io/authors/taco-s.-cohen/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Learning Discrete Distributions by Dequantization</title>
+      <link>https://ehoogeboom.github.io/publication/dequantization/</link>
+      <pubDate>Sat, 01 Feb 2020 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/dequantization/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>HexaConv</title>
+      <link>https://ehoogeboom.github.io/publication/hexaconv/</link>
+      <pubDate>Tue, 06 Mar 2018 00:00:00 +0200</pubDate>
+      
+      <guid>https://ehoogeboom.github.io/publication/hexaconv/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>
